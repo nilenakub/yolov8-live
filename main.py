@@ -1,81 +1,58 @@
-import cv2
-import argparse
-
 from ultralytics import YOLO
-import supervision as sv
-import numpy as np
+import cv2
+import math 
+import torch
+
+torch.device('cpu')
+# start webcam
+cap = cv2.VideoCapture(0)
+cap.set(3, 640)
+cap.set(4, 480)
+
+# model
+model = YOLO("best.pt") 
+
+# object classes
+classNames = ["Aluminium foil", "Bottle cap", "Bottle", "Broken glass", "Can", "Carton", "Cigarette", "Cup", "Lid", "Other litter", "Other plastic", "Paper", "Plastic bag - wrapper", "Plastic container", "Pop tab", "Straw", "Styrofoam piece", "Unlabeled litter"
+              ]
 
 
-ZONE_POLYGON = np.array([
-    [0, 0],
-    [0.5, 0],
-    [0.5, 1],
-    [0, 1]
-])
+while True:
+    success, img = cap.read()
+    results = model(img, stream=True)
 
+    # # coordinates
+    for r in results:
+        boxes = r.boxes
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="YOLOv8 live")
-    parser.add_argument(
-        "--webcam-resolution", 
-        default=[1280, 720], 
-        nargs=2, 
-        type=int
-    )
-    args = parser.parse_args()
-    return args
+        for box in boxes:
+            # bounding box
+            x1, y1, x2, y2 = box.xyxy[0]
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
 
+    #         # put box in cam
+    #         cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
-def main():
-    args = parse_arguments()
-    frame_width, frame_height = args.webcam_resolution
+    #         # confidence
+    #         confidence = math.ceil((box.conf[0]*100))/100
+    #         print("Confidence --->",confidence)
 
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
+    #         # class name
+    #         cls = int(box.cls[0])
+    #         print("Class name -->", classNames[cls])
 
-    model = YOLO("yolov8l.pt")
+    #         # object details
+    #         org = [x1, y1]
+    #         font = cv2.FONT_HERSHEY_SIMPLEX
+    #         fontScale = 1
+    #         color = (255, 0, 0)
+    #         thickness = 2
 
-    box_annotator = sv.BoxAnnotator(
-        thickness=2,
-        text_thickness=2,
-        text_scale=1
-    )
+    #         cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
 
-    zone_polygon = (ZONE_POLYGON * np.array(args.webcam_resolution)).astype(int)
-    zone = sv.PolygonZone(polygon=zone_polygon, frame_resolution_wh=tuple(args.webcam_resolution))
-    zone_annotator = sv.PolygonZoneAnnotator(
-        zone=zone, 
-        color=sv.Color.red(),
-        thickness=2,
-        text_thickness=4,
-        text_scale=2
-    )
+    cv2.imshow('Webcam', img)
+    if cv2.waitKey(1) == ord('q'):
+        break
 
-    while True:
-        ret, frame = cap.read()
-
-        result = model(frame, agnostic_nms=True)[0]
-        detections = sv.Detections.from_yolov8(result)
-        labels = [
-            f"{model.model.names[class_id]} {confidence:0.2f}"
-            for _, confidence, class_id, _
-            in detections
-        ]
-        frame = box_annotator.annotate(
-            scene=frame, 
-            detections=detections, 
-            labels=labels
-        )
-
-        zone.trigger(detections=detections)
-        frame = zone_annotator.annotate(scene=frame)      
-        
-        cv2.imshow("yolov8", frame)
-
-        if (cv2.waitKey(30) == 27):
-            break
-
-
-if __name__ == "__main__":
-    main()
+cap.release()
+cv2.destroyAllWindows()
