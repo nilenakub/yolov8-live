@@ -1,6 +1,16 @@
 from ultralytics import YOLO
 import cv2
 import torch
+import serial
+import time
+import struct
+
+
+
+# Setting Serial Communications
+SerialObj = serial.Serial('COM5', timeout=1)  # Set Comms, include timeout
+SerialObj.baudrate = 9600  # set Baud rate to 9600
+time.sleep(2)  # Wait for 2 seconds to establish the connection
 
 print(torch.cuda.is_available())
 print(torch.cuda.device_count())
@@ -32,17 +42,17 @@ try:
             print(f"Bounding Box: x={x}, y={y}, w={w}, h={h}, class={class_names[int(box.cls[0])]}")
             x, y, w, h = int(x), int(y), int(w), int(h)
             # Convert w, h to real-world units  
-
-            for box in boxes:
-                x, y, w, h = box.xywh[0]
-                print(f"Bounding Box: x={x}, y={y}, w={w}, h={h}, class={class_names[int(box.cls[0])]}")
-                x, y, w, h = int(x), int(y), int(w), int(h)
-                # Convert w, h to real-world units
-                if class_names[int(box.cls[0])] == "Plastic bottle cap":  # Check if the detected object is a Bottle cap
-                    pixel_to_real_height_ratio = 0.55  # Example ratio, adjust based on your calibration
-                    real_height = h * pixel_to_real_height_ratio
-                    print(f"Real Height: {real_height} mm, Class: {class_names[int(box.cls[0])]}.")
-        
+            if class_names[int(box.cls[0])] == "Plastic bottle cap":  # Check if the detected object is a Bottle cap
+                pixel_to_real_height_ratio = 0.55  # Example ratio, adjust based on your calibration
+                real_height = h * pixel_to_real_height_ratio
+                print(f"Real Height: {real_height} mm, Class: {class_names[int(box.cls[0])]}.")
+                float_value = real_height
+                packed_data = "{:.2f}\n".format(float_value)
+                SerialObj.write(packed_data.encode('utf-8'))
+                print(f"Sent: {packed_data}")
+                SerialObj.flush()
+                time.sleep(0.1)
+                
     # # Press 'esc' to exit the webcam feed
     cap.release()  # Release the webcam
     if cv2.waitKey(0) & 0xFF == 27:  # 27 is the ASCII code for the 'esc' key
