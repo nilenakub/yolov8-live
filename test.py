@@ -3,7 +3,6 @@ import cv2
 import torch
 import serial
 import time
-import struct
 
 
 
@@ -12,9 +11,9 @@ SerialObj = serial.Serial('COM5', timeout=1)  # Set Comms, include timeout
 SerialObj.baudrate = 9600  # set Baud rate to 9600
 time.sleep(2)  # Wait for 2 seconds to establish the connection
 
-print(torch.cuda.is_available())
-print(torch.cuda.device_count())
-print(torch.cuda.get_device_name(0))
+# print(torch.cuda.is_available())
+# print(torch.cuda.device_count())
+# print(torch.cuda.get_device_name(0))
 
 # Load Yolo Model
 try:
